@@ -76,31 +76,36 @@ class PINCodeApp:
             row = (i-1) // 3
             col = (i-1) % 3
             btn = tk.Button(numpad_frame, text=str(i), width=5, height=2, font=button_font, 
-                          command=lambda num=i: self.append_digit(num))
+                          command=lambda num=i: self.append_digit(num),
+                          bg="light gray", relief=tk.RAISED)
             btn.grid(row=row, column=col, padx=5, pady=5)
             self.number_buttons[i] = btn
         
         # Button for 0
         zero_btn = tk.Button(numpad_frame, text="0", width=5, height=2, font=button_font, 
-                command=lambda: self.append_digit(0))
+                command=lambda: self.append_digit(0),
+                bg="light gray", relief=tk.RAISED)
         zero_btn.grid(row=3, column=1, padx=5, pady=5)
         self.number_buttons[0] = zero_btn
         
         # Delete button (left)
         del_btn = tk.Button(numpad_frame, text="⌫", width=5, height=2, font=button_font, 
-                command=self.delete_digit)
+                command=self.delete_digit,
+                bg="light gray", relief=tk.RAISED)
         del_btn.grid(row=3, column=0, padx=5, pady=5)
         self.number_buttons[-1] = del_btn  # Use -1 to represent delete
         
         # Clear button (right)
         clear_btn = tk.Button(numpad_frame, text="Clear", width=5, height=2, font=button_font, 
-                command=self.clear_input)
+                command=self.clear_input,
+                bg="light gray", relief=tk.RAISED)
         clear_btn.grid(row=3, column=2, padx=5, pady=5)
         self.number_buttons[-2] = clear_btn  # Use -2 to represent clear
         
         # Save button
         save_btn = tk.Button(self.set_tab, text="Save PIN", width=15, height=2, font=("Arial", 12),
-                          command=self.save_pin_code)
+                          command=self.save_pin_code,
+                          bg="light gray", relief=tk.RAISED)
         save_btn.pack(pady=20)
         self.number_buttons[-3] = save_btn  # Use -3 to represent save
         
@@ -141,32 +146,37 @@ class PINCodeApp:
             row = (i-1) // 3
             col = (i-1) % 3
             btn = tk.Button(numpad_frame, text=str(i), width=5, height=2, font=button_font, 
-                          command=lambda num=i: self.append_digit(num))
+                          command=lambda num=i: self.append_digit(num),
+                          bg="light gray", relief=tk.RAISED)
             btn.grid(row=row, column=col, padx=5, pady=5)
             # Use 100+i to distinguish verify tab buttons from set tab buttons
             self.number_buttons[100+i] = btn
         
         # Button for 0
         zero_btn = tk.Button(numpad_frame, text="0", width=5, height=2, font=button_font, 
-                command=lambda: self.append_digit(0))
+                command=lambda: self.append_digit(0),
+                bg="light gray", relief=tk.RAISED)
         zero_btn.grid(row=3, column=1, padx=5, pady=5)
         self.number_buttons[100] = zero_btn
         
         # Delete button (left)
         del_btn = tk.Button(numpad_frame, text="⌫", width=5, height=2, font=button_font, 
-                command=self.delete_digit)
+                command=self.delete_digit,
+                bg="light gray", relief=tk.RAISED)
         del_btn.grid(row=3, column=0, padx=5, pady=5)
         self.number_buttons[-101] = del_btn  # Use -101 to represent delete in verify tab
         
         # Clear button (right)
         clear_btn = tk.Button(numpad_frame, text="Clear", width=5, height=2, font=button_font, 
-                command=self.clear_input)
+                command=self.clear_input,
+                bg="light gray", relief=tk.RAISED)
         clear_btn.grid(row=3, column=2, padx=5, pady=5)
         self.number_buttons[-102] = clear_btn  # Use -102 to represent clear in verify tab
         
         # Verify button
         verify_btn = tk.Button(self.verify_tab, text="Verify PIN", width=15, height=2, font=("Arial", 12),
-                            command=self.verify_pin_code)
+                            command=self.verify_pin_code,
+                            bg="light gray", relief=tk.RAISED)
         verify_btn.pack(pady=20)
         self.number_buttons[-103] = verify_btn  # Use -103 to represent verify
         
@@ -295,88 +305,117 @@ class PINCodeApp:
         current_number = self.selected_number
         current_tab = self.tab_control.index(self.tab_control.select())
         
+        print(f"Moving highlight {direction} from {current_number} on tab {current_tab}")
+        
+        # Adjust for the current tab - if we're in verify tab and have a regular number
+        if current_tab == 1:
+            # Convert from verify tab button ID (100+) to regular number for easier logic
+            if current_number >= 100 and current_number <= 109:
+                temp_number = current_number - 100
+            elif current_number <= -100:
+                temp_number = current_number + 100
+            else:
+                temp_number = current_number
+        else:
+            temp_number = current_number
+        
         # Movement logic
         if direction == "up":
-            if current_number in [1, 2, 3]:
+            if temp_number in [1, 2, 3]:
                 # Already at top row, do nothing or wrap to bottom
-                if current_number == 2:
-                    self.selected_number = 0  # Go to 0
-                elif current_number == 1:
-                    self.selected_number = -1  # Go to delete
-                elif current_number == 3:
-                    self.selected_number = -2  # Go to clear
-            elif current_number in [4, 5, 6]:
+                if temp_number == 2:
+                    temp_number = 0  # Go to 0
+                elif temp_number == 1:
+                    temp_number = -1  # Go to delete
+                elif temp_number == 3:
+                    temp_number = -2  # Go to clear
+            elif temp_number in [4, 5, 6]:
                 # Go up one row
-                self.selected_number -= 3
-            elif current_number in [7, 8, 9]:
+                temp_number -= 3
+            elif temp_number in [7, 8, 9]:
                 # Go up one row
-                self.selected_number -= 3
-            elif current_number == 0:
+                temp_number -= 3
+            elif temp_number == 0:
                 # From 0 go to 8
-                self.selected_number = 8
-            elif current_number in [-1, -2]:  # Delete or Clear
+                temp_number = 8
+            elif temp_number in [-1, -2]:  # Delete or Clear
                 # From bottom row special buttons, go to 7 or 9
-                self.selected_number = 7 if current_number == -1 else 9
+                temp_number = 7 if temp_number == -1 else 9
             
         elif direction == "down":
-            if current_number in [1, 2, 3]:
+            if temp_number in [1, 2, 3]:
                 # Go down one row
-                self.selected_number += 3
-            elif current_number in [4, 5, 6]:
+                temp_number += 3
+            elif temp_number in [4, 5, 6]:
                 # Go down one row
-                self.selected_number += 3
-            elif current_number in [7, 8, 9]:
+                temp_number += 3
+            elif temp_number in [7, 8, 9]:
                 # From 7/8/9 go to special bottom row
-                if current_number == 8:
-                    self.selected_number = 0
-                elif current_number == 7:
-                    self.selected_number = -1  # Delete
-                elif current_number == 9:
-                    self.selected_number = -2  # Clear
-            elif current_number in [0, -1, -2]:
+                if temp_number == 8:
+                    temp_number = 0
+                elif temp_number == 7:
+                    temp_number = -1  # Delete
+                elif temp_number == 9:
+                    temp_number = -2  # Clear
+            elif temp_number in [0, -1, -2]:
                 # From bottom row, go to save/verify button
-                self.selected_number = -3 if current_tab == 0 else -103
+                temp_number = -3 if current_tab == 0 else -103
                 
         elif direction == "left":
-            if current_number in [2, 3, 5, 6, 8, 9]:
+            if temp_number in [2, 3, 5, 6, 8, 9]:
                 # Not on left edge, move left
-                self.selected_number -= 1
-            elif current_number == 0:
+                temp_number -= 1
+            elif temp_number == 0:
                 # From 0, go to delete
-                self.selected_number = -1
-            elif current_number == -2:  # Clear
+                temp_number = -1
+            elif temp_number == -2:  # Clear
                 # From Clear, go to 0
-                self.selected_number = 0
+                temp_number = 0
                 
         elif direction == "right":
-            if current_number in [1, 2, 4, 5, 7, 8]:
+            if temp_number in [1, 2, 4, 5, 7, 8]:
                 # Not on right edge, move right
-                self.selected_number += 1
-            elif current_number == -1:  # Delete
+                temp_number += 1
+            elif temp_number == -1:  # Delete
                 # From Delete, go to 0
-                self.selected_number = 0
-            elif current_number == 0:
+                temp_number = 0
+            elif temp_number == 0:
                 # From 0, go to Clear
-                self.selected_number = -2
+                temp_number = -2
         
-        # Adjust for current tab (verify tab buttons have 100 added)
-        if current_tab == 1 and self.selected_number >= 0 and self.selected_number <= 9:
-            self.selected_number += 100
-        elif current_tab == 1 and self.selected_number < 0 and self.selected_number != -3 and self.selected_number != -103:
+        # Adjust back for current tab (verify tab buttons have 100 added)
+        if current_tab == 1 and temp_number >= 0 and temp_number <= 9:
+            self.selected_number = temp_number + 100
+        elif current_tab == 1 and temp_number < 0 and temp_number != -3 and temp_number != -103:
             # For special buttons
-            self.selected_number -= 100
+            self.selected_number = temp_number - 100
+        else:
+            self.selected_number = temp_number
         
+        print(f"New selected number: {self.selected_number}")
         self.update_button_highlight()
     
     def update_button_highlight(self):
         """Update the visual appearance of buttons to show which is selected"""
-        # Reset all button colors
-        for btn_id, button in self.number_buttons.items():
-            button.config(bg="SystemButtonFace", relief=tk.RAISED)
+        # Add more debugging
+        print(f"Update highlight called for number: {self.selected_number}")
+        print(f"Available button IDs: {list(self.number_buttons.keys())}")
         
-        # Highlight the selected button
+        # Reset all button colors - use a more explicit default color
+        for btn_id, button in self.number_buttons.items():
+            button.config(bg="light gray",fg="black", relief=tk.RAISED)
+        
+        # Highlight the selected button with a more noticeable color
         if self.selected_number in self.number_buttons:
-            self.number_buttons[self.selected_number].config(bg="#add8e6", relief=tk.SUNKEN)  # Light blue highlight
+            print(f"Highlighting button: {self.selected_number}")
+            selected_button = self.number_buttons[self.selected_number]
+            # Use a much more noticeable color and effect
+            selected_button.config(bg="red", fg="red", relief=tk.SUNKEN)
+            
+            # Force update the UI
+            self.root.update_idletasks()
+        else:
+            print(f"WARNING: Button {self.selected_number} not found in buttons dictionary!")
     
     def handle_selected_button(self):
         """Handle the currently selected button action"""
