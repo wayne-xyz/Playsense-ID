@@ -285,7 +285,7 @@ class PINCodeApp:
             self.current_focus = self.verify_entry
     
     def move_highlight(self, direction):
-        """Move the highlighted button based on direction"""
+        """Move the highlighted button based on direction, by using the D-pad on the DualSense controller"""
         # Number pad layout:
         # 1 2 3
         # 4 5 6
@@ -436,7 +436,7 @@ class PINCodeApp:
             try:
                 # Get controller state
                 # Handle D-pad for navigation
-                if self.dualsense.dpad_up:
+                if self.dualsense.state.DpadUp:
                     if not button_states['dpad_up']:
                         button_states['dpad_up'] = True
                         print("Button pressed: D-pad UP")
@@ -444,7 +444,7 @@ class PINCodeApp:
                 else:
                     button_states['dpad_up'] = False
                 
-                if self.dualsense.dpad_down:
+                if self.dualsense.state.DpadDown:
                     if not button_states['dpad_down']:
                         button_states['dpad_down'] = True
                         print("Button pressed: D-pad DOWN")
@@ -452,7 +452,7 @@ class PINCodeApp:
                 else:
                     button_states['dpad_down'] = False
                 
-                if self.dualsense.dpad_left:
+                if self.dualsense.state.DpadLeft:
                     if not button_states['dpad_left']:
                         button_states['dpad_left'] = True
                         print("Button pressed: D-pad LEFT")
@@ -460,7 +460,7 @@ class PINCodeApp:
                 else:
                     button_states['dpad_left'] = False
                 
-                if self.dualsense.dpad_right:
+                if self.dualsense.state.DpadRight:
                     if not button_states['dpad_right']:
                         button_states['dpad_right'] = True
                         print("Button pressed: D-pad RIGHT")
@@ -469,7 +469,7 @@ class PINCodeApp:
                     button_states['dpad_right'] = False
                 
                 # Handle cross button (confirm/enter number)
-                if self.dualsense.cross_pressed:
+                if self.dualsense.state.cross:
                     if not button_states['cross']:
                         button_states['cross'] = True
                         print("Button pressed: CROSS")
@@ -479,7 +479,7 @@ class PINCodeApp:
                     button_states['cross'] = False
                 
                 # Handle triangle button (delete)
-                if self.dualsense.triangle_pressed:
+                if self.dualsense.state.triangle:
                     if not button_states['triangle']:
                         button_states['triangle'] = True
                         print("Button pressed: TRIANGLE")
@@ -488,7 +488,7 @@ class PINCodeApp:
                     button_states['triangle'] = False
                 
                 # Handle circle button (clear)
-                if self.dualsense.circle_pressed:
+                if self.dualsense.state.circle:
                     if not button_states['circle']:
                         button_states['circle'] = True
                         print("Button pressed: CIRCLE")

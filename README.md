@@ -1,4 +1,9 @@
-# PIN Code Application
+# Model Training for the authentication 
+Leverage the inertial data to train a model for the authentication.
+By using the dualsense controller, we can collect the data and train a model to verify the user.
+
+
+##  PIN Code Application - GUI For data collection
 
 A GUI application for setting and verifying PIN codes using a DualSense controller.
 
