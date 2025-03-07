@@ -4,6 +4,7 @@ import time
 import threading
 import datetime
 from typing import Optional, Dict, List, Any
+import pydualsense
 
 class DualSenseDataCollector:
     """
@@ -12,7 +13,7 @@ class DualSenseDataCollector:
     """
     
     def __init__(self, 
-                 controller=None, 
+                 controller:pydualsense.pydualsense=None, 
                  output_dir: str = "data",
                  user_id: str = "unknown"):
         """
@@ -146,8 +147,8 @@ class DualSenseDataCollector:
                     if len(self.data_buffer) >= 100:
                         self._write_buffer_to_csv()
                 
-                # Collect at approximately 20Hz
-                time.sleep(0.05)
+                # Collect at approximately 250Hz
+                time.sleep(0.004)
                 
             except Exception as e:
                 print(f"Error in data collection: {e}")
