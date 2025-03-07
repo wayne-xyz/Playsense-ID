@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 import threading
 import time
 from pydualsense import pydualsense
+from DualSenseDataCollector import DualSenseDataCollector
 
 class PINCodeApp:
     def __init__(self, root):
@@ -47,6 +48,8 @@ class PINCodeApp:
         
         # Initialize DualSense controller
         self.initialize_controller()
+
+
     
     def build_set_pin_tab(self):
         # Title
@@ -453,7 +456,13 @@ class PINCodeApp:
         try:
             self.dualsense = pydualsense()
             self.dualsense.init()
-            
+
+            # init the collector
+            self.collector = DualSenseDataCollector(controller=self.dualsense, user_id="user1")
+            # start collection
+            self.collector.start_collection()
+
+
             # Start controller input thread
             self.controller_running = True
             self.controller_thread = threading.Thread(target=self.controller_loop)
@@ -579,6 +588,7 @@ class PINCodeApp:
         self.controller_running = False
         if hasattr(self, 'dualsense'):
             try:
+                self.collector.stop_collection()
                 self.dualsense.close()
             except:
                 pass

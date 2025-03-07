@@ -126,6 +126,12 @@ class DualSenseDataCollector:
                 acc_y = self.controller.state.accelerometer.Y
                 acc_z = self.controller.state.accelerometer.Z
                 
+                # Print real-time inertial data
+                print("\rInertial Data - Gyro(P,Y,R): [{:6.2f}, {:6.2f}, {:6.2f}] | Acc(X,Y,Z): [{:6.2f}, {:6.2f}, {:6.2f}]".format(
+                    gyro_pitch, gyro_yaw, gyro_roll,
+                    acc_x, acc_y, acc_z
+                ), end="", flush=True)
+                
                 # Create data entry
                 data_entry = [
                     timestamp,
