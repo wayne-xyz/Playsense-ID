@@ -301,11 +301,12 @@ class PINCodeApp:
         # 4 5 6
         # 7 8 9
         # ⌫ 0 Clear
+        # save_btn
         
         current_number = self.selected_number
         current_tab = self.tab_control.index(self.tab_control.select())
         
-        print(f"Moving highlight {direction} from {current_number} on tab {current_tab}")
+        # print(f"Moving highlight {direction} from {current_number} on tab {current_tab}")
         
         # Adjust for the current tab - if we're in verify tab and have a regular number
         if current_tab == 1:
@@ -341,6 +342,12 @@ class PINCodeApp:
             elif temp_number in [-1, -2]:  # Delete or Clear
                 # From bottom row special buttons, go to 7 or 9
                 temp_number = 7 if temp_number == -1 else 9
+            elif temp_number in [-3, -103]:  # Save/Verify button
+                # From save/verify button, go to bottom row
+                if current_tab == 0:
+                    temp_number = 0  # Go to 0 on Set PIN tab
+                else:
+                    temp_number = 0  # Go to 0 on Verify PIN tab
             
         elif direction == "down":
             if temp_number in [1, 2, 3]:
@@ -392,14 +399,14 @@ class PINCodeApp:
         else:
             self.selected_number = temp_number
         
-        print(f"New selected number: {self.selected_number}")
+        # print(f"New selected number: {self.selected_number}")
         self.update_button_highlight()
     
     def update_button_highlight(self):
         """Update the visual appearance of buttons to show which is selected"""
-        # Add more debugging
-        print(f"Update highlight called for number: {self.selected_number}")
-        print(f"Available button IDs: {list(self.number_buttons.keys())}")
+        # # Add more debugging
+        # print(f"Update highlight called for number: {self.selected_number}")
+        # print(f"Available button IDs: {list(self.number_buttons.keys())}")
         
         # Reset all button colors - use a more explicit default color
         for btn_id, button in self.number_buttons.items():
@@ -407,10 +414,9 @@ class PINCodeApp:
         
         # Highlight the selected button with a more noticeable color
         if self.selected_number in self.number_buttons:
-            print(f"Highlighting button: {self.selected_number}")
             selected_button = self.number_buttons[self.selected_number]
             # Use a much more noticeable color and effect
-            selected_button.config(bg="red", fg="red", relief=tk.SUNKEN)
+            selected_button.config(bg="light gray", fg="red", relief=tk.SUNKEN)
             
             # Force update the UI
             self.root.update_idletasks()
@@ -468,7 +474,8 @@ class PINCodeApp:
             'dpad_up': False,
             'dpad_down': False,
             'dpad_left': False,
-            'dpad_right': False
+            'dpad_right': False,
+            'rectangle': False  # Added rectangle button state
         }
         
         while self.controller_running:
@@ -535,12 +542,37 @@ class PINCodeApp:
                 else:
                     button_states['circle'] = False
                 
+                # Handle rectangle button (switch text field focus)
+                if self.dualsense.state.square:
+                    if not button_states['rectangle']:
+                        button_states['rectangle'] = True
+                        print("Button pressed: RECTANGLE/SQUARE")
+                        self.root.after(0, self.switch_text_field)
+                else:
+                    button_states['rectangle'] = False
+                
                 # Sleep to prevent high CPU usage
                 time.sleep(0.05)
                 
             except Exception as e:
                 print(f"Error reading controller input: {e}")
                 time.sleep(1)  # Longer sleep on error
+    
+    def switch_text_field(self):
+        """Switch focus between text fields in the current tab"""
+        current_tab = self.tab_control.index(self.tab_control.select())
+        
+        if current_tab == 0:  # Set PIN tab
+            if self.current_focus == self.pin_entry:
+                self.confirm_entry.focus_set()
+                self.current_focus = self.confirm_entry
+            else:
+                self.pin_entry.focus_set()
+                self.current_focus = self.pin_entry
+        else:  # Verify PIN tab
+            # Only one text field in verify tab
+            self.verify_entry.focus_set()
+            self.current_focus = self.verify_entry
     
     def on_closing(self):
         # Cleanup controller

@@ -30,6 +30,12 @@ A GUI application for setting and verifying PIN codes using a DualSense controll
 
 ## Usage
 
+
+### Windows 
+
+- add hidapi.dll
+- conda install cffi
+
 Run the application:
 ```
 python pin_code_app.py
