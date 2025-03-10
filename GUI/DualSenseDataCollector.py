@@ -140,6 +140,20 @@ class DualSenseDataCollector:
         record_count = 0
         last_write_time = time.time()
         
+        # Button press counters and state tracking
+        button_counters = {
+            "cross": 0, "circle": 0, "triangle": 0, "square": 0,
+            "up": 0, "down": 0, "left": 0, "right": 0,
+            "L1": 0, "L2": 0, "L3": 0, "R1": 0, "R2": 0, "R3": 0
+        }
+        
+        # Track button states to detect consecutive presses
+        button_active = {
+            "cross": False, "circle": False, "triangle": False, "square": False,
+            "up": False, "down": False, "left": False, "right": False,
+            "L1": False, "L2": False, "L3": False, "R1": False, "R2": False, "R3": False
+        }
+        
         print("Collection loop started")
         
         while self.is_collecting:
@@ -149,6 +163,18 @@ class DualSenseDataCollector:
                 
                 # Check which buttons are pressed
                 button_press = self._get_pressed_buttons()
+                
+                # Parse pressed buttons
+                current_buttons = set(button_press.split(",")) if button_press != "none" else set()
+                
+                # Update button counters - only count when a button transitions from inactive to active
+                for button in button_counters.keys():
+                    if button in current_buttons:
+                        if not button_active[button]:  # Button was not active before
+                            button_counters[button] += 1
+                            button_active[button] = True
+                    else:
+                        button_active[button] = False  # Button is not pressed, reset active state
                 
                 # Get gyro data
                 gyro_pitch = self.controller.state.gyro.Pitch
@@ -167,6 +193,12 @@ class DualSenseDataCollector:
                         acc_x, acc_y, acc_z,
                         record_count
                     ), end="", flush=True)
+                    
+                    # Print button press counts every 50 records
+                    print("\nButton press counts:")
+                    for button, count in button_counters.items():
+                        if count > 0:
+                            print(f"  {button}: {count} times")
                 
                 # Create data entry
                 data_entry = [
