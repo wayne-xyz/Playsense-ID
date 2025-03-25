@@ -190,6 +190,19 @@ class HapticEnhanceApp:
                 text=f"{symbol}: {'Pressed' if is_pressed else 'Not Pressed'}",
                 foreground=color
             )
+            
+            # Handle haptic feedback for fixed-haptic mode
+            if hasattr(self, 'dualsense') and self.controller_connected:
+                mode = self.haptic_mode.get()
+                if mode == "fixed-haptic":
+                    if is_pressed:
+                        # Set both motors to lowest intensity (1) when button is pressed
+                        self.dualsense.setLeftMotor(1)
+                        self.dualsense.setRightMotor(1)
+                    else:
+                        # Stop vibration when button is released
+                        self.dualsense.setLeftMotor(0)
+                        self.dualsense.setRightMotor(0)
     
     def on_haptic_mode_change(self):
         """Handle haptic mode changes"""
