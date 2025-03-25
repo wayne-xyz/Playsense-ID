@@ -11,15 +11,16 @@ class HapticEnhanceApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Haptic Enhancement Data Collection")
-        self.root.geometry("1000x900")  # Increased height to 900
+        self.root.geometry("600x600")  # Increased height from 400 to 600 while keeping width at 600
         
         # Controller status
         self.controller_connected = False
         self.collector = None
+        self.haptic_mode = tk.StringVar(value="non-haptic")  # Default mode
         
         # Create main frame with padding
         self.main_frame = ttk.Frame(root)
-        self.main_frame.pack(expand=True, fill="both", padx=30, pady=30)
+        self.main_frame.pack(expand=True, fill="both", padx=10, pady=10)  # Reduced padding from 20
         
         # Status section
         self.create_status_section()
@@ -35,25 +36,25 @@ class HapticEnhanceApp:
     
     def create_status_section(self):
         # Status frame
-        status_frame = ttk.LabelFrame(self.main_frame, text="Controller Status", padding=20)
-        status_frame.pack(fill="x", pady=20)  # Increased spacing
+        status_frame = ttk.LabelFrame(self.main_frame, text="Controller Status", padding=5)  # Reduced from 10
+        status_frame.pack(fill="x", pady=5)  # Reduced from 10
         
-        # Controller connection status with larger font
+        # Controller connection status with smaller font
         self.status_label = ttk.Label(status_frame, text="Controller: Disconnected", 
-                                    foreground="red", font=("Arial", 16))  # Increased font size
-        self.status_label.pack(pady=20)  # Increased spacing
+                                    foreground="red", font=("Arial", 10))  # Reduced from 12
+        self.status_label.pack(pady=2)  # Reduced from 10
         
-        # Last update time with larger font
+        # Last update time with smaller font
         self.update_time_label = ttk.Label(status_frame, text="Last Update: Never",
-                                         font=("Arial", 16))  # Increased font size
-        self.update_time_label.pack(pady=20)  # Increased spacing
+                                         font=("Arial", 10))  # Reduced from 12
+        self.update_time_label.pack(pady=2)  # Reduced from 10
     
     def create_button_display_section(self):
         # Button display frame
-        button_frame = ttk.LabelFrame(self.main_frame, text="Button Press Display", padding=20)
-        button_frame.pack(fill="x", pady=20)  # Increased spacing
+        button_frame = ttk.LabelFrame(self.main_frame, text="Button Press Display", padding=5)  # Reduced from 10
+        button_frame.pack(fill="x", pady=5)  # Reduced from 10
         
-        # Create a grid of labels for different buttons with larger size
+        # Create a grid of labels for different buttons with smaller size
         self.button_labels = {}
         buttons = [
             ('cross', '✕'), ('circle', '○'), ('triangle', '△'), ('square', '□'),
@@ -64,35 +65,53 @@ class HapticEnhanceApp:
             row = i // 4
             col = i % 4
             label = ttk.Label(button_frame, text=f"{symbol}: Not Pressed", 
-                            width=25, padding=15, font=("Arial", 14))  # Increased size and font
-            label.grid(row=row, column=col, padx=15, pady=15)  # Increased spacing
+                            width=15, padding=2, font=("Arial", 9))  # Reduced width, padding and font
+            label.grid(row=row, column=col, padx=5, pady=2)  # Reduced spacing
             self.button_labels[button] = label
     
     def create_control_section(self):
         # Control frame
-        control_frame = ttk.LabelFrame(self.main_frame, text="Data Collection Control", padding=20)
-        control_frame.pack(fill="x", pady=20)  # Increased spacing
+        control_frame = ttk.LabelFrame(self.main_frame, text="Data Collection Control", padding=5)  # Reduced from 10
+        control_frame.pack(fill="x", pady=5)  # Reduced from 10
         
-        # Collection status with larger font
+        # Haptic Mode Selection
+        mode_frame = ttk.Frame(control_frame)
+        mode_frame.pack(fill="x", pady=2)
+        
+        ttk.Label(mode_frame, text="Haptic Mode:", 
+                 font=("Arial", 9)).pack(pady=2)
+        
+        modes = [("Non-Haptic", "non-haptic"),
+                ("Fixed-Haptic", "fixed-haptic"),
+                ("Flexible-Haptic", "flexible-haptic")]
+        
+        for text, mode in modes:
+            ttk.Radiobutton(mode_frame, text=text,
+                          variable=self.haptic_mode,
+                          value=mode,
+                          command=self.on_haptic_mode_change).pack(pady=1)
+        
+        # Collection status with smaller font
         self.collection_status = ttk.Label(control_frame, text="Collection Status: Stopped", 
-                                         foreground="red", font=("Arial", 16))  # Increased font size
-        self.collection_status.pack(pady=20)  # Increased spacing
+                                         foreground="red", font=("Arial", 10))  # Reduced from 12
+        self.collection_status.pack(pady=2)  # Reduced from 10
         
-        # Start/Stop button with larger size
+        # Start/Stop button with smaller size
         self.toggle_button = ttk.Button(control_frame, text="Start Collection", 
-                                      command=self.toggle_collection, width=25)  # Increased width
-        self.toggle_button.pack(pady=20)  # Increased spacing
+                                      command=self.toggle_collection, width=15)  # Reduced from 20
+        self.toggle_button.pack(pady=2)  # Reduced from 10
         
-        # Instructions with larger font
+        # Instructions with smaller font
         instructions = (
             "Instructions:\n"
             "1. Connect DualSense controller\n"
-            "2. Press Start Collection to begin\n"
-            "3. Use controller buttons\n"
-            "4. Press Stop Collection when done"
+            "2. Select haptic mode\n"
+            "3. Press Start Collection to begin\n"
+            "4. Use controller buttons\n"
+            "5. Press Stop Collection when done"
         )
         ttk.Label(control_frame, text=instructions, justify=tk.LEFT, 
-                 font=("Arial", 14)).pack(pady=20)  # Increased font size and spacing
+                 font=("Arial", 9)).pack(pady=2)  # Reduced from 11 and 10
     
     def initialize_controller(self):
         try:
@@ -172,6 +191,22 @@ class HapticEnhanceApp:
                 foreground=color
             )
     
+    def on_haptic_mode_change(self):
+        """Handle haptic mode changes"""
+        mode = self.haptic_mode.get()
+        print(f"Haptic mode changed to: {mode}")
+        
+        # If collection is running, stop it when mode changes
+        if self.collector is not None:
+            try:
+                self.collector.stop_collection()
+                self.collector = None
+                self.collection_status.config(text="Collection Status: Stopped", 
+                                           foreground="red")
+                self.toggle_button.config(text="Start Collection")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to stop collection: {e}")
+    
     def toggle_collection(self):
         if not self.controller_connected:
             messagebox.showwarning("Warning", "Controller not connected!")
@@ -180,21 +215,18 @@ class HapticEnhanceApp:
         if self.collector is None:
             # Start collection
             try:
+                mode = self.haptic_mode.get()
                 self.collector = DualSenseHapticDataCollector(
                     controller=self.dualsense, 
-                    user_id="haptic_user",
-                    output_dir="data/haptic_data"  # Create a specific directory for haptic data
+                    user_id=f"haptic_user_{mode}",  # Include mode in user_id
+                    output_dir=f"data/haptic_data/{mode}"  # Separate directory for each mode
                 )
                 self.collector.start_collection()
-                self.collection_status.config(text="Collection Status: Recording", 
-                                           foreground="green")
-                self.toggle_button.config(text="Stop Collection")
-                
-                # Update status to show audio recording
                 self.collection_status.config(
-                    text="Collection Status: Recording (Inertial + Audio)", 
+                    text=f"Collection Status: Recording ({mode})", 
                     foreground="green"
                 )
+                self.toggle_button.config(text="Stop Collection")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to start collection: {e}")
                 if self.collector:

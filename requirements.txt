@@ -6,3 +6,4 @@ seaborn
 scikit-learn
 sounddevice
 librosa
+pyaudio
