@@ -29,6 +29,9 @@ class HapticEnhanceApp:
         self.chirp_duration = 0.15  # Duration in seconds (150ms)
         self.chirp_fs = 48000  # Sample rate (Hz)
         
+        # Store the generated chirp signal
+        self.chirp_audio_data = None
+        
         # Add working device storage
         self.working_dualsense_device = None
         self.dualsense_devices = []  # Initialize empty list for DualSense devices
@@ -341,20 +344,18 @@ class HapticEnhanceApp:
             messagebox.showerror("Error", f"Failed to get audio devices: {str(e)}")
 
     def generate_chirp(self):
-        """Generate chirp signal with predefined parameters"""
         try:
-            # Generate time array
+            # If we already have generated audio data, return it
+            if self.chirp_audio_data is not None:
+                return self.chirp_audio_data
+            
+            # Generate new signal only on first call
             t = np.linspace(0, self.chirp_duration, int(self.chirp_fs * self.chirp_duration))
-            
-            # Generate chirp signal
             signal = chirp(t, f0=self.chirp_f0, f1=self.chirp_f1, t1=self.chirp_duration, method='linear')
-            
-            # Create stereo signal (2 channels)
             multi_channel_signal = np.column_stack((signal, signal))
-            
-            # Convert to 16-bit PCM
             samples = (multi_channel_signal * 32767).astype(np.int16)
-            return samples.tobytes()
+            self.chirp_audio_data = samples.tobytes()  # Store the generated audio data
+            return self.chirp_audio_data
             
         except Exception as e:
             logging.error(f"Error generating chirp: {e}")
@@ -370,10 +371,10 @@ class HapticEnhanceApp:
     def _play_chirp_thread(self):
         """Thread function to handle the actual audio playback"""
         try:
-            logging.info("Generating chirp signal...")
+            # Get the audio data (will generate only once)
             audio_data = self.generate_chirp()
             if audio_data is not None:
-                logging.info(f"Audio data generated successfully. Size: {len(audio_data)} bytes")
+                logging.info(f"Using stored audio data. Size: {len(audio_data)} bytes")
                 
                 try:
                     # Initialize PyAudio
