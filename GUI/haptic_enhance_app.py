@@ -74,6 +74,17 @@ class HapticEnhanceApp:
         control_frame = ttk.LabelFrame(self.main_frame, text="Data Collection Control", padding=5)  # Reduced from 10
         control_frame.pack(fill="x", pady=5)  # Reduced from 10
         
+        # User Name Input
+        name_frame = ttk.Frame(control_frame)
+        name_frame.pack(fill="x", pady=2)
+        
+        ttk.Label(name_frame, text="User Name:", 
+                 font=("Arial", 9)).pack(side=tk.LEFT, padx=2)
+        
+        self.user_name = tk.StringVar(value="user1")  # Default user name
+        self.name_entry = ttk.Entry(name_frame, textvariable=self.user_name, width=20)
+        self.name_entry.pack(side=tk.LEFT, padx=2)
+        
         # Haptic Mode Selection
         mode_frame = ttk.Frame(control_frame)
         mode_frame.pack(fill="x", pady=2)
@@ -229,9 +240,14 @@ class HapticEnhanceApp:
             # Start collection
             try:
                 mode = self.haptic_mode.get()
+                user_name = self.user_name.get().strip()
+                if not user_name:
+                    messagebox.showwarning("Warning", "Please enter a user name!")
+                    return
+                    
                 self.collector = DualSenseHapticDataCollector(
                     controller=self.dualsense, 
-                    user_id=f"haptic_user_{mode}",  # Include mode in user_id
+                    user_id=f"{user_name}_{mode}",  # Include user name and mode in user_id
                     output_dir=f"data/haptic_data/{mode}"  # Separate directory for each mode
                 )
                 self.collector.start_collection()
