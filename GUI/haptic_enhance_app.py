@@ -4,8 +4,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 import time
+import numpy as np
+import sounddevice as sd
+from scipy.signal import chirp
+import pyaudio
 from pydualsense import pydualsense
 from DualSenseHapticDataCollector import DualSenseHapticDataCollector
+import logging
 
 class HapticEnhanceApp:
     def __init__(self, root):
@@ -17,6 +22,16 @@ class HapticEnhanceApp:
         self.controller_connected = False
         self.collector = None
         self.haptic_mode = tk.StringVar(value="non-haptic")  # Default mode
+        
+        # Chirp sound parameters
+        self.chirp_f0 = 50  # Start frequency (Hz)
+        self.chirp_f1 = 1000  # End frequency (Hz)
+        self.chirp_duration = 0.15  # Duration in seconds (200ms)
+        self.chirp_fs = 48000  # Sample rate (Hz)
+        
+        # Add working device storage
+        self.working_dualsense_device = None
+        self.dualsense_devices = []  # Initialize empty list for DualSense devices
         
         # Create main frame with padding
         self.main_frame = ttk.Frame(root)
@@ -30,6 +45,9 @@ class HapticEnhanceApp:
         
         # Control section
         self.create_control_section()
+        
+        # Initialize audio devices
+        self.update_audio_devices()
         
         # Initialize controller
         self.initialize_controller()
@@ -202,7 +220,7 @@ class HapticEnhanceApp:
                 foreground=color
             )
             
-            # Handle haptic feedback for fixed-haptic mode
+            # Handle haptic feedback based on mode
             if hasattr(self, 'dualsense') and self.controller_connected:
                 mode = self.haptic_mode.get()
                 if mode == "fixed-haptic":
@@ -214,6 +232,9 @@ class HapticEnhanceApp:
                         # Stop vibration when button is released
                         self.dualsense.setLeftMotor(0)
                         self.dualsense.setRightMotor(0)
+                elif mode == "flexible-haptic" and is_pressed:
+                    # Play chirp sound only when button is pressed (not held)
+                    self.play_chirp()
     
     def on_haptic_mode_change(self):
         """Handle haptic mode changes"""
@@ -292,6 +313,95 @@ class HapticEnhanceApp:
             except:
                 pass
         self.root.destroy()
+
+    def update_audio_devices(self):
+        """Get list of available audio output devices"""
+        try:
+            self.devices = sd.query_devices()
+            self.dualsense_devices = []
+            
+            logging.info("Available audio devices:")
+            for i, device in enumerate(self.devices):
+                logging.info(f"[{i}] {device['name']}")
+                if 'dualsense' in device['name'].lower():
+                    self.dualsense_devices.append(i)
+                    logging.info(f"Found DualSense device at index {i}")
+            
+            if not self.dualsense_devices:
+                logging.warning("No DualSense devices found")
+        except Exception as e:
+            logging.error(f"Error querying audio devices: {str(e)}")
+            messagebox.showerror("Error", f"Failed to get audio devices: {str(e)}")
+
+    def generate_chirp(self):
+        """Generate chirp signal with predefined parameters"""
+        try:
+            # Generate time array
+            t = np.linspace(0, self.chirp_duration, int(self.chirp_fs * self.chirp_duration))
+            
+            # Generate chirp signal
+            signal = chirp(t, f0=self.chirp_f0, f1=self.chirp_f1, t1=self.chirp_duration, method='linear')
+            
+            # Create stereo signal (2 channels)
+            multi_channel_signal = np.column_stack((signal, signal))
+            
+            # Convert to 16-bit PCM
+            samples = (multi_channel_signal * 32767).astype(np.int16)
+            return samples.tobytes()
+            
+        except Exception as e:
+            logging.error(f"Error generating chirp: {e}")
+            return None
+
+    def play_chirp(self):
+        """Play the chirp sound on the default audio device in a separate thread"""
+        # Start audio playback in a separate thread
+        audio_thread = threading.Thread(target=self._play_chirp_thread)
+        audio_thread.daemon = True  # Thread will exit when main program exits
+        audio_thread.start()
+
+    def _play_chirp_thread(self):
+        """Thread function to handle the actual audio playback"""
+        try:
+            logging.info("Generating chirp signal...")
+            audio_data = self.generate_chirp()
+            if audio_data is not None:
+                logging.info(f"Audio data generated successfully. Size: {len(audio_data)} bytes")
+                
+                try:
+                    # Initialize PyAudio
+                    p = pyaudio.PyAudio()
+                    
+                    # Get default output device info
+                    default_device_index = p.get_default_output_device_info()["index"]
+                    default_device_name = p.get_device_info_by_index(default_device_index)["name"]
+                    logging.info(f"Using default audio output device: {default_device_name}")
+                    
+                    # Open stream
+                    stream = p.open(
+                        format=pyaudio.paInt16,
+                        channels=2,
+                        rate=self.chirp_fs,
+                        output=True,
+                        output_device_index=default_device_index,
+                        frames_per_buffer=2048
+                    )
+                    
+                    # Play audio
+                    stream.write(audio_data)
+                    
+                    # Close stream and PyAudio
+                    stream.stop_stream()
+                    stream.close()
+                    p.terminate()
+                    
+                    logging.info("Successfully played chirp on default device")
+                    
+                except Exception as e:
+                    logging.error(f"Error playing on default device: {str(e)}")
+                
+        except Exception as e:
+            logging.error(f"Error playing chirp: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()

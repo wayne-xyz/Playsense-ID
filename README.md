@@ -64,7 +64,7 @@ Connect your DualSense controller before starting the application. Then:
 
 ## Haptic model by Audio playing features 
 
-- Enable the audio haptic feature
+- Enable the audio haptic feature set the pydaulsense `sendReport[1]=0x01`
 
 ## Note
 

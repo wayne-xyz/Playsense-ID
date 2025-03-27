@@ -38,7 +38,7 @@ class ChirpGeneratorUI:
         
         # Start frequency
         ttk.Label(freq_frame, text="Start Frequency (Hz):").grid(row=0, column=0, padx=5, pady=2)
-        self.start_freq = tk.StringVar(value="100")
+        self.start_freq = tk.StringVar(value="0")
         ttk.Entry(freq_frame, textvariable=self.start_freq, width=10).grid(row=0, column=1, padx=5, pady=2)
         
         # End frequency
