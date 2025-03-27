@@ -25,6 +25,9 @@ class ChirpGeneratorUI:
         
         logging.info("Initializing Chirp Generator UI")
         
+        # Add working device storage
+        self.working_dualsense_device = None
+        
         # Create main frame
         main_frame = ttk.Frame(root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -80,17 +83,17 @@ class ChirpGeneratorUI:
         """Get list of available audio output devices"""
         try:
             self.devices = sd.query_devices()
-            self.dualsense_device = None
+            self.dualsense_devices = []
             
             logging.info("Available audio devices:")
             for i, device in enumerate(self.devices):
                 logging.info(f"[{i}] {device['name']}")
                 if 'dualsense' in device['name'].lower():
-                    self.dualsense_device = i
+                    self.dualsense_devices.append(i)
                     logging.info(f"Found DualSense device at index {i}")
             
-            if self.dualsense_device is None:
-                logging.warning("No DualSense device found")
+            if not self.dualsense_devices:
+                logging.warning("No DualSense devices found")
         except Exception as e:
             logging.error(f"Error querying audio devices: {str(e)}")
             messagebox.showerror("Error", f"Failed to get audio devices: {str(e)}")
@@ -144,58 +147,108 @@ class ChirpGeneratorUI:
     
     def play_dualsense(self):
         """Play chirp on DualSense controller"""
-        if self.dualsense_device is None:
-            logging.error("DualSense controller not found")
-            messagebox.showerror("Error", "DualSense controller not found")
+        if not self.dualsense_devices:
+            logging.error("No DualSense controllers found")
+            messagebox.showerror("Error", "No DualSense controllers found")
             return
-            
+        
         signal, fs = self.generate_chirp()
         if signal is not None:
-            try:
-                logging.info(f"Playing chirp on DualSense (device {self.dualsense_device})")
-                self.status_label.config(text="Playing on DualSense...")
-                
-                # Fixed to 2 channels for DualSense
-                channels = 2
-                logging.info(f"Using {channels} channels for DualSense")
-                
-                # Ensure signal is not empty before creating multi-channel version
-                if len(signal) == 0:
-                    raise ValueError("Generated signal is empty")
-                
-                # Create stereo signal (2 channels)
-                multi_channel_signal = np.column_stack((signal, signal))
-                
-                # Convert numpy array to bytes for PyAudio
-                samples = (multi_channel_signal * 32767).astype(np.int16)
-                audio_data = samples.tobytes()
-                
-                # Initialize PyAudio
-                p = pyaudio.PyAudio()
-                
-                # Open stream
-                stream = p.open(
-                    format=pyaudio.paInt16,
-                    channels=channels,
-                    rate=int(fs),
-                    output=True,
-                    output_device_index=self.dualsense_device,
-                    frames_per_buffer=2048
-                )
-                
-                # Play audio
-                stream.write(audio_data)
-                
-                # Close stream and PyAudio
-                stream.stop_stream()
-                stream.close()
-                p.terminate()
-                
-                self.status_label.config(text="Ready")
-                logging.info("Finished playing on DualSense")
-            except Exception as e:
-                logging.error(f"Error playing on DualSense: {str(e)}")
-                messagebox.showerror("Error", f"Failed to play on DualSense: {str(e)}")
+            # If we have a working device, try it first
+            if self.working_dualsense_device is not None:
+                try:
+                    logging.info(f"Attempting to play on previously working DualSense device {self.working_dualsense_device}")
+                    self.status_label.config(text=f"Playing on DualSense (device {self.working_dualsense_device})...")
+                    
+                    # Fixed to 2 channels for DualSense
+                    channels = 2
+                    
+                    # Create stereo signal (2 channels)
+                    multi_channel_signal = np.column_stack((signal, signal))
+                    
+                    # Convert numpy array to bytes for PyAudio
+                    samples = (multi_channel_signal * 32767).astype(np.int16)
+                    audio_data = samples.tobytes()
+                    
+                    # Initialize PyAudio
+                    p = pyaudio.PyAudio()
+                    
+                    # Open stream
+                    stream = p.open(
+                        format=pyaudio.paInt16,
+                        channels=channels,
+                        rate=int(fs),
+                        output=True,
+                        output_device_index=self.working_dualsense_device,
+                        frames_per_buffer=2048
+                    )
+                    
+                    # Play audio
+                    stream.write(audio_data)
+                    
+                    # Close stream and PyAudio
+                    stream.stop_stream()
+                    stream.close()
+                    p.terminate()
+                    
+                    self.status_label.config(text="Ready")
+                    logging.info(f"Successfully played on DualSense device {self.working_dualsense_device}")
+                    return  # Exit function after successful playback
+                    
+                except Exception as e:
+                    logging.warning(f"Previously working device {self.working_dualsense_device} failed: {str(e)}")
+                    self.working_dualsense_device = None  # Reset working device if it fails
+            
+            # If no working device or it failed, try all devices
+            for device_index in self.dualsense_devices:
+                try:
+                    logging.info(f"Attempting to play chirp on DualSense device {device_index}")
+                    self.status_label.config(text=f"Playing on DualSense (device {device_index})...")
+                    
+                    # Fixed to 2 channels for DualSense
+                    channels = 2
+                    
+                    # Create stereo signal (2 channels)
+                    multi_channel_signal = np.column_stack((signal, signal))
+                    
+                    # Convert numpy array to bytes for PyAudio
+                    samples = (multi_channel_signal * 32767).astype(np.int16)
+                    audio_data = samples.tobytes()
+                    
+                    # Initialize PyAudio
+                    p = pyaudio.PyAudio()
+                    
+                    # Open stream
+                    stream = p.open(
+                        format=pyaudio.paInt16,
+                        channels=channels,
+                        rate=int(fs),
+                        output=True,
+                        output_device_index=device_index,
+                        frames_per_buffer=2048
+                    )
+                    
+                    # Play audio
+                    stream.write(audio_data)
+                    
+                    # Close stream and PyAudio
+                    stream.stop_stream()
+                    stream.close()
+                    p.terminate()
+                    
+                    self.status_label.config(text="Ready")
+                    logging.info(f"Successfully played on DualSense device {device_index}")
+                    # Store the working device
+                    self.working_dualsense_device = device_index
+                    return  # Exit function after successful playback
+                    
+                except Exception as e:
+                    logging.warning(f"Failed to play on DualSense device {device_index}: {str(e)}")
+                    continue  # Try next device if available
+            
+            # If we get here, all devices failed
+            logging.error("Failed to play on any DualSense device")
+            messagebox.showerror("Error", "Failed to play on any DualSense device")
     
     def save_to_file(self):
         """Save chirp signal to WAV file"""
