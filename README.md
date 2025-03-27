@@ -61,6 +61,11 @@ Connect your DualSense controller before starting the application. Then:
 - **Set PIN Tab**: Enter and confirm your PIN code
 - **Verify PIN Tab**: Verify a previously saved PIN code
 
+
+## Haptic model by Audio playing features 
+
+- Enable the audio haptic feature
+
 ## Note
 
 This application requires the PyDualSense library to interface with the DualSense controller. If a controller is not detected, the application will still function using the on-screen controls.
