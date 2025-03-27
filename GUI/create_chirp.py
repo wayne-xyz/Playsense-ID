@@ -8,6 +8,7 @@ from scipy.signal import chirp
 import time
 import logging
 import pydualsense
+import pyaudio
 
 # Set up logging
 logging.basicConfig(
@@ -49,7 +50,7 @@ class ChirpGeneratorUI:
         
         # Sample rate
         ttk.Label(freq_frame, text="Sample Rate (Hz):").grid(row=3, column=0, padx=5, pady=2)
-        self.sample_rate = tk.StringVar(value="44100")
+        self.sample_rate = tk.StringVar(value="48000")
         ttk.Entry(freq_frame, textvariable=self.sample_rate, width=10).grid(row=3, column=1, padx=5, pady=2)
         
         # Control buttons
@@ -153,8 +154,43 @@ class ChirpGeneratorUI:
             try:
                 logging.info(f"Playing chirp on DualSense (device {self.dualsense_device})")
                 self.status_label.config(text="Playing on DualSense...")
-                sd.play(signal, fs, device=self.dualsense_device)
-                sd.wait()
+                
+                # Fixed to 2 channels for DualSense
+                channels = 2
+                logging.info(f"Using {channels} channels for DualSense")
+                
+                # Ensure signal is not empty before creating multi-channel version
+                if len(signal) == 0:
+                    raise ValueError("Generated signal is empty")
+                
+                # Create stereo signal (2 channels)
+                multi_channel_signal = np.column_stack((signal, signal))
+                
+                # Convert numpy array to bytes for PyAudio
+                samples = (multi_channel_signal * 32767).astype(np.int16)
+                audio_data = samples.tobytes()
+                
+                # Initialize PyAudio
+                p = pyaudio.PyAudio()
+                
+                # Open stream
+                stream = p.open(
+                    format=pyaudio.paInt16,
+                    channels=channels,
+                    rate=int(fs),
+                    output=True,
+                    output_device_index=self.dualsense_device,
+                    frames_per_buffer=2048
+                )
+                
+                # Play audio
+                stream.write(audio_data)
+                
+                # Close stream and PyAudio
+                stream.stop_stream()
+                stream.close()
+                p.terminate()
+                
                 self.status_label.config(text="Ready")
                 logging.info("Finished playing on DualSense")
             except Exception as e:
