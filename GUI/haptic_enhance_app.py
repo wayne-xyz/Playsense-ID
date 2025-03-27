@@ -26,7 +26,7 @@ class HapticEnhanceApp:
         # Chirp sound parameters
         self.chirp_f0 = 50  # Start frequency (Hz)
         self.chirp_f1 = 1000  # End frequency (Hz)
-        self.chirp_duration = 0.15  # Duration in seconds (200ms)
+        self.chirp_duration = 0.15  # Duration in seconds (150ms)
         self.chirp_fs = 48000  # Sample rate (Hz)
         
         # Add working device storage
@@ -223,15 +223,22 @@ class HapticEnhanceApp:
             # Handle haptic feedback based on mode
             if hasattr(self, 'dualsense') and self.controller_connected:
                 mode = self.haptic_mode.get()
-                if mode == "fixed-haptic":
-                    if is_pressed:
-                        # Set both motors to lowest intensity (1) when button is pressed
+                if mode == "fixed-haptic" and is_pressed:
+                    # Start vibration in a separate thread
+                    def vibrate_thread():
+                        # Set both motors to lowest intensity (1)
                         self.dualsense.setLeftMotor(1)
                         self.dualsense.setRightMotor(1)
-                    else:
-                        # Stop vibration when button is released
+                        # Wait for 150ms
+                        time.sleep(0.15)
+                        # Stop vibration
                         self.dualsense.setLeftMotor(0)
                         self.dualsense.setRightMotor(0)
+                    
+                    # Start vibration thread
+                    vibration_thread = threading.Thread(target=vibrate_thread)
+                    vibration_thread.daemon = True
+                    vibration_thread.start()
                 elif mode == "flexible-haptic" and is_pressed:
                     # Play chirp sound only when button is pressed (not held)
                     self.play_chirp()
