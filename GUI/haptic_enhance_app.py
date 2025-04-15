@@ -276,10 +276,11 @@ class HapticEnhanceApp:
                     messagebox.showwarning("Warning", "Please enter a user name!")
                     return
                     
+                # Simplified user_id using only the user name
                 self.collector = DualSenseHapticDataCollector(
                     controller=self.dualsense, 
-                    user_id=f"{user_name}_{mode}",  # Include user name and mode in user_id
-                    output_dir=f"data/haptic_data/{mode}"  # Separate directory for each mode
+                    user_id=user_name,  # Just use the user name directly
+                    output_dir=f"data/haptic_data/{mode}"  # Keep mode-specific directories
                 )
                 self.collector.start_collection()
                 self.collection_status.config(

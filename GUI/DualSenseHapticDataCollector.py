@@ -8,6 +8,8 @@ import numpy as np
 import sounddevice as sd
 from typing import Optional, Dict, List, Any
 import pydualsense
+import pandas as pd
+import wavfile
 
 class DualSenseHapticDataCollector:
     """
@@ -17,7 +19,7 @@ class DualSenseHapticDataCollector:
     
     def __init__(self, 
                  controller: pydualsense.pydualsense = None, 
-                 output_dir: str = "data",
+                 output_dir: str = "data/haptic_data",
                  user_id: str = "unknown",
                  audio_sample_rate: int = 48000,
                  audio_channels: int = 2):
@@ -34,7 +36,7 @@ class DualSenseHapticDataCollector:
         self.controller = controller
         self.output_dir = output_dir
         self.user_id = user_id
-        self.is_collecting = False
+        self.running = False
         self.collection_thread = None
         self.audio_thread = None
         self.data_buffer = []
@@ -56,6 +58,17 @@ class DualSenseHapticDataCollector:
         
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
+        
+        # Generate timestamp once for both files
+        self.timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Simplified file naming using only user_id and timestamp
+        self.csv_filename = f"{self.user_id}_{self.timestamp}.csv"
+        self.audio_filename = f"{self.user_id}_{self.timestamp}.wav"
+        
+        # Full paths
+        self.csv_path = os.path.join(output_dir, self.csv_filename)
+        self.audio_path = os.path.join(output_dir, self.audio_filename)
         
         print(f"DualSenseHapticDataCollector initialized with user_id: {user_id}")
     
@@ -79,25 +92,16 @@ class DualSenseHapticDataCollector:
     
     def start_collection(self):
         """Start collecting data from the controller"""
-        if self.is_collecting:
+        if self.running:
             print("Data collection is already running")
             return
         
         if not self.controller:
             raise ValueError("No controller has been set. Call set_controller() first.")
         
-        # Create timestamp for filenames
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Create CSV filename
-        csv_filename = f"{self.output_dir}/controller_data_{self.user_id}_{timestamp}.csv"
-        
-        # Create WAV filename
-        self.wav_filename = f"{self.output_dir}/audio_{self.user_id}_{timestamp}.wav"
-        
         try:
             # Open and initialize CSV file
-            self.csv_file = open(csv_filename, 'w', newline='')
+            self.csv_file = open(self.csv_path, 'w', newline='')
             self.csv_writer = csv.writer(self.csv_file)
             
             # Write header row with audio file reference
@@ -116,7 +120,7 @@ class DualSenseHapticDataCollector:
             self.csv_file.flush()
             
             # Initialize WAV file
-            self.wav_file = wave.open(self.wav_filename, 'wb')
+            self.wav_file = wave.open(self.audio_path, 'wb')
             self.wav_file.setnchannels(self.audio_channels)
             self.wav_file.setsampwidth(2)  # 16-bit audio
             self.wav_file.setframerate(self.audio_sample_rate)
@@ -140,8 +144,8 @@ class DualSenseHapticDataCollector:
                 raise ValueError("DualSense microphone not found")
             
             print("\n=== Recording Configuration ===")
-            print(f"CSV file: {csv_filename}")
-            print(f"WAV file: {self.wav_filename}")
+            print(f"CSV file: {self.csv_path}")
+            print(f"WAV file: {self.audio_path}")
             print(f"Sample Rate: {self.audio_sample_rate} Hz")
             print(f"Channels: {self.audio_channels}")
             print(f"Selected Device: {devices[self.audio_device]['name']}")
@@ -151,7 +155,7 @@ class DualSenseHapticDataCollector:
             return
         
         # Start collection threads
-        self.is_collecting = True
+        self.running = True
         self.collection_thread = threading.Thread(target=self._collection_loop)
         self.audio_thread = threading.Thread(target=self._audio_recording_loop)
         
@@ -165,18 +169,18 @@ class DualSenseHapticDataCollector:
         self.collection_thread.start()
         self.audio_thread.start()
         
-        print(f"Started data collection. Saving to {csv_filename} and {self.wav_filename}")
+        print(f"Started data collection. Saving to {self.csv_path} and {self.audio_path}")
     
     def stop_collection(self):
         """Stop collecting data from the controller"""
-        if not self.is_collecting:
+        if not self.running:
             print("Data collection is not running")
             return
             
         print("Stopping data collection...")
         
         # Signal threads to stop
-        self.is_collecting = False
+        self.running = False
         
         # Wait for threads to finish
         if self.collection_thread and self.collection_thread.is_alive():
@@ -240,14 +244,14 @@ class DualSenseHapticDataCollector:
                               channels=self.audio_channels,
                               samplerate=self.audio_sample_rate,
                               callback=audio_callback):
-                while self.is_collecting:
+                while self.running:
                     time.sleep(0.1)
         except Exception as e:
             print(f"Error in audio recording: {e}")
     
     def _write_audio_buffer(self, force=False):
         """Write audio buffer to WAV file"""
-        if not self.wav_file or (not self.is_collecting and not force):
+        if not self.wav_file or (not self.running and not force):
             return
         
         try:
@@ -284,7 +288,7 @@ class DualSenseHapticDataCollector:
         
         print("Collection loop started")
         
-        while self.is_collecting:
+        while self.running:
             try:
                 # Get current timestamp
                 timestamp = datetime.datetime.now().isoformat()
@@ -338,7 +342,7 @@ class DualSenseHapticDataCollector:
                     acc_y,
                     acc_z,
                     self.user_id,
-                    os.path.basename(self.wav_filename)  # Use stored filename instead of wav_file.filename
+                    os.path.basename(self.audio_path)  # Use stored filename instead of wav_file.filename
                 ]
                 
                 # Add to buffer
@@ -401,7 +405,7 @@ class DualSenseHapticDataCollector:
     
     def _write_buffer_to_csv(self, force=False):
         """Write all buffered data to CSV and clear the buffer"""
-        if (not self.csv_writer or (not self.is_collecting and not force)):
+        if (not self.csv_writer or (not self.running and not force)):
             return
         
         try:
@@ -425,7 +429,7 @@ class DualSenseHapticDataCollector:
     
     def record_event(self, event_name: str, extra_data: Optional[Dict[str, Any]] = None):
         """Record a specific event with the current sensor data"""
-        if not self.is_collecting or not self.controller:
+        if not self.running or not self.controller:
             print(f"Cannot record event '{event_name}': collection not active")
             return
             
@@ -442,7 +446,7 @@ class DualSenseHapticDataCollector:
                 self.controller.state.accelerometer.Y,
                 self.controller.state.accelerometer.Z,
                 self.user_id,
-                os.path.basename(self.wav_filename) if self.wav_filename else "none"  # Use stored filename
+                os.path.basename(self.audio_path) if self.audio_path else "none"  # Use stored filename
             ]
             
             with self.buffer_lock:
