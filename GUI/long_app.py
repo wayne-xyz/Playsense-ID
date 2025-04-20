@@ -20,6 +20,7 @@ class LongApp:
         
         # Recording state
         self.recording = False
+        self.waiting_for_next = False
         self.current_button_index = 0
         self.button_sequence = ['cross', 'circle', 'triangle', 'square']
         self.button_symbols = {
@@ -27,6 +28,13 @@ class LongApp:
             'circle': '○',
             'triangle': '△',
             'square': '□'
+        }
+        
+        # Button states
+        self.button_colors = {
+            'normal': 'black',
+            'target': 'red',
+            'pressed': 'green'
         }
         
         # Create main frame
@@ -61,21 +69,33 @@ class LongApp:
         button_frame = ttk.LabelFrame(self.main_frame, text="Button Press Display", padding=5)
         button_frame.pack(fill="x", pady=5)
         
-        # Create a grid of labels for different buttons
+        # Create a grid of labels for different buttons in controller layout
         self.button_labels = {}
-        buttons = [
-            ('cross', '✕'), ('circle', '○'), ('triangle', '△'), ('square', '□')
-        ]
         
-        for i, (button, symbol) in enumerate(buttons):
+        # Define button positions in a 3x3 grid (controller layout)
+        button_positions = {
+            'triangle': (0, 1),  # Top
+            'square': (1, 0),    # Left middle
+            'circle': (1, 2),    # Right middle
+            'cross': (2, 1)      # Bottom
+        }
+        
+        # Create buttons in controller layout
+        for button, (row, col) in button_positions.items():
+            symbol = self.button_symbols[button]
             label = ttk.Label(button_frame, text=f"{symbol}: Not Pressed", 
                             width=15, padding=2, font=("Arial", 12))
-            label.grid(row=0, column=i, padx=5, pady=2)
+            label.grid(row=row, column=col, padx=5, pady=2)
             self.button_labels[button] = label
+        
+        # Add some spacing to make it look more like a controller
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
+        button_frame.grid_columnconfigure(2, weight=1)
         
         # Prompt label
         self.prompt_label = ttk.Label(button_frame, text="", font=("Arial", 12))
-        self.prompt_label.grid(row=1, column=0, columnspan=4, pady=10)
+        self.prompt_label.grid(row=3, column=0, columnspan=3, pady=10)
     
     def create_control_section(self):
         # Control frame
@@ -170,7 +190,15 @@ class LongApp:
     def update_button_display(self, button, is_pressed):
         if button in self.button_labels:
             symbol = self.button_symbols[button]
-            color = "green" if is_pressed else "black"
+            
+            # Determine the color based on button state
+            if is_pressed:
+                color = self.button_colors['pressed']
+            elif self.recording and button == self.button_sequence[self.current_button_index]:
+                color = self.button_colors['target']
+            else:
+                color = self.button_colors['normal']
+            
             self.button_labels[button].config(
                 text=f"{symbol}: {'Pressed' if is_pressed else 'Not Pressed'}",
                 foreground=color
@@ -189,6 +217,10 @@ class LongApp:
             next_button = self.button_sequence[self.current_button_index]
             symbol = self.button_symbols[next_button]
             self.prompt_label.config(text=f"Please press {symbol} button")
+            
+            # Update all button colors
+            for button in self.button_labels:
+                self.update_button_display(button, False)
     
     def start_recording(self):
         if not self.controller_connected:
