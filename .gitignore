@@ -4,3 +4,4 @@
 /nb/checkpoints
 /nb/autoencoder_checkpoints
 /nb/binary_checkpoints
+*.pth
