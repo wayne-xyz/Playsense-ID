@@ -7,6 +7,7 @@ import soundfile as sf
 from scipy import signal
 import os
 from tkinterdnd2 import DND_FILES, TkinterDnD
+import librosa
 
 class SpecApp:
     def __init__(self, root):
@@ -51,8 +52,8 @@ class SpecApp:
         plot_frame = ttk.LabelFrame(self.main_frame, text="Audio Analysis", padding=10)
         plot_frame.pack(expand=True, fill="both", pady=5)
         
-        # Create matplotlib figure with two subplots
-        self.fig, (self.ax1, self.ax2) = plt.subplots(2, 1, figsize=(10, 8))
+        # Create matplotlib figure with three subplots
+        self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, 1, figsize=(10, 12))
         self.fig.subplots_adjust(hspace=0.5)
         
         # Create canvas for the figure
@@ -67,6 +68,10 @@ class SpecApp:
         self.ax2.set_title("Spectrogram")
         self.ax2.set_xlabel("Time (s)")
         self.ax2.set_ylabel("Frequency (Hz)")
+        
+        self.ax3.set_title("MFCC")
+        self.ax3.set_xlabel("Time (s)")
+        self.ax3.set_ylabel("MFCC Coefficients")
         
         self.canvas.draw()
     
@@ -121,6 +126,7 @@ class SpecApp:
         # Clear previous plots
         self.ax1.clear()
         self.ax2.clear()
+        self.ax3.clear()
         
         # Convert stereo to mono if needed
         if len(self.audio_data.shape) > 1:
@@ -145,6 +151,13 @@ class SpecApp:
         self.ax2.set_xlabel("Time (s)")
         self.ax2.set_ylabel("Frequency (Hz)")
         self.ax2.grid(True)
+        
+        # Plot MFCC
+        mfccs = librosa.feature.mfcc(y=audio_data, sr=self.sample_rate)
+        self.ax3.imshow(mfccs, aspect='auto', origin='lower')
+        self.ax3.set_title(f"MFCC - {self.filename}")
+        self.ax3.set_xlabel("Time (s)")
+        self.ax3.set_ylabel("MFCC Coefficients")
         
         # Adjust layout and redraw
         self.fig.tight_layout()
