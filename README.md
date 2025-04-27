@@ -66,6 +66,8 @@ Connect your DualSense controller before starting the application. Then:
 
 - Enable the audio haptic feature set the pydaulsense `sendReport[1]=0x01`
 - Enable the audio from the built-in speaker(normal audio) set the pydualsense `sendReport[1]=0x02` ??
+- Change the usb port can change the audio haptic or built-in speaker
+- Denoise model and normal micphone model ? ?
 
 ## Note
 
