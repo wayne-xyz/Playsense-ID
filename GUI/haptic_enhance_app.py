@@ -35,6 +35,8 @@ class HapticEnhanceApp:
         # Add working device storage
         self.working_dualsense_device = None
         self.dualsense_devices = []  # Initialize empty list for DualSense devices
+        self.selected_device_index = tk.StringVar()  # Store selected device index
+        self.selected_channel = tk.StringVar(value="0")  # Store selected channel
         
         # Create main frame with padding
         self.main_frame = ttk.Frame(root)
@@ -105,6 +107,33 @@ class HapticEnhanceApp:
         self.user_name = tk.StringVar(value="user1")  # Default user name
         self.name_entry = ttk.Entry(name_frame, textvariable=self.user_name, width=20)
         self.name_entry.pack(side=tk.LEFT, padx=2)
+        
+        # Audio Device Selection
+        self.device_frame = ttk.Frame(control_frame)
+        self.device_frame.pack(fill="x", pady=2)
+        
+        # Device selector
+        device_selector_frame = ttk.Frame(self.device_frame)
+        device_selector_frame.pack(fill="x", pady=2)
+        
+        ttk.Label(device_selector_frame, text="Audio Device:", 
+                 font=("Arial", 9)).pack(side=tk.LEFT, padx=2)
+        
+        self.device_selector = ttk.Combobox(device_selector_frame, textvariable=self.selected_device_index, state="readonly", width=40)
+        self.device_selector.pack(side=tk.LEFT, padx=2)
+        
+        # Channel selector
+        channel_selector_frame = ttk.Frame(self.device_frame)
+        channel_selector_frame.pack(fill="x", pady=2)
+        
+        ttk.Label(channel_selector_frame, text="Output Channel:", 
+                 font=("Arial", 9)).pack(side=tk.LEFT, padx=2)
+        
+        self.channel_selector = ttk.Combobox(channel_selector_frame, textvariable=self.selected_channel, state="readonly", width=10)
+        self.channel_selector.pack(side=tk.LEFT, padx=2)
+        
+        # Initially hide the device selector
+        self.device_frame.pack_forget()
         
         # Haptic Mode Selection
         mode_frame = ttk.Frame(control_frame)
@@ -251,6 +280,12 @@ class HapticEnhanceApp:
         mode = self.haptic_mode.get()
         print(f"Haptic mode changed to: {mode}")
         
+        # Show/hide device selector based on mode
+        if mode == "flexible-haptic":
+            self.device_frame.pack(fill="x", pady=2)
+        else:
+            self.device_frame.pack_forget()
+        
         # If collection is running, stop it when mode changes
         if self.collector is not None:
             try:
@@ -330,16 +365,63 @@ class HapticEnhanceApp:
         try:
             self.devices = sd.query_devices()
             self.dualsense_devices = []
+            device_options = []
             
-            logging.info("Available audio devices:")
+            logging.info("\n=== Audio Device Scan ===")
             for i, device in enumerate(self.devices):
-                logging.info(f"[{i}] {device['name']}")
-                if 'dualsense' in device['name'].lower():
-                    self.dualsense_devices.append(i)
-                    logging.info(f"Found DualSense device at index {i}")
+                device_name = device['name']
+                is_dualsense = 'dualsense' in device_name.lower()
+                
+                if is_dualsense:
+                    logging.info(f"\nDualSense Device [{i}] {device_name}:")
+                    logging.info(f"  - Input Channels: {device['max_input_channels']}")
+                    logging.info(f"  - Output Channels: {device['max_output_channels']}")
+                    logging.info(f"  - Default Sample Rate: {device['default_samplerate']} Hz")
+                    
+                    if device['max_output_channels'] > 0:
+                        self.dualsense_devices.append(i)
+                        device_options.append(f"{i}: {device_name}")
+                        logging.info("  ✓ Can be used for audio playback")
+                        
+                        # Update channel selector when device is selected
+                        def update_channels(event):
+                            selected_option = self.selected_device_index.get()
+                            if selected_option:
+                                selected_index = int(selected_option.split(':')[0])
+                                device_info = self.devices[selected_index]
+                                channels = device_info['max_output_channels']
+                                channel_options = [str(i) for i in range(channels)]
+                                self.channel_selector['values'] = channel_options
+                                if channel_options:
+                                    self.channel_selector.set(channel_options[0])
+                        
+                        self.device_selector.bind('<<ComboboxSelected>>', update_channels)
+                    else:
+                        logging.info("  ✗ Cannot be used for audio playback (no output channels)")
+                else:
+                    logging.info(f"\nOther Device [{i}] {device_name}:")
+                    logging.info(f"  - Input Channels: {device['max_input_channels']}")
+                    logging.info(f"  - Output Channels: {device['max_output_channels']}")
             
             if not self.dualsense_devices:
-                logging.warning("No DualSense devices found")
+                logging.warning("\nNo DualSense output devices found")
+            else:
+                # Update device selector
+                self.device_selector['values'] = device_options
+                if device_options:
+                    self.device_selector.set(device_options[0])  # Set default selection
+                    self.selected_device_index.set(device_options[0].split(':')[0])  # Set the index
+                    # Update channel selector for default device
+                    device_info = self.devices[int(device_options[0].split(':')[0])]
+                    channels = device_info['max_output_channels']
+                    channel_options = [str(i) for i in range(channels)]
+                    self.channel_selector['values'] = channel_options
+                    if channel_options:
+                        self.channel_selector.set(channel_options[0])
+                    logging.info(f"\nSelected default output device: {device_options[0]}")
+            
+            logging.info("=== End of Device Scan ===\n")
+            
         except Exception as e:
             logging.error(f"Error querying audio devices: {str(e)}")
             messagebox.showerror("Error", f"Failed to get audio devices: {str(e)}")
@@ -381,18 +463,47 @@ class HapticEnhanceApp:
                     # Initialize PyAudio
                     p = pyaudio.PyAudio()
                     
-                    # Get default output device info
-                    default_device_index = p.get_default_output_device_info()["index"]
-                    default_device_name = p.get_device_info_by_index(default_device_index)["name"]
-                    logging.info(f"Using default audio output device: {default_device_name}")
+                    # Get selected device index
+                    selected_option = self.selected_device_index.get()
+                    if not selected_option:
+                        logging.error("No audio device selected")
+                        return
+                        
+                    selected_index = int(selected_option.split(':')[0])
+                    device_info = p.get_device_info_by_index(selected_index)
+                    device_name = device_info["name"]
+                    max_channels = device_info["maxOutputChannels"]
+                    
+                    # Get selected channel
+                    selected_channel = int(self.selected_channel.get())
+                    
+                    # Check if device is actually an output device
+                    if max_channels == 0:
+                        logging.error(f"Device [{selected_index}] {device_name} is not an output device")
+                        messagebox.showerror("Error", f"Selected device is not an output device")
+                        return
+                    
+                    # Check if selected channel is valid
+                    if selected_channel >= max_channels:
+                        logging.error(f"Selected channel {selected_channel} is not available (max: {max_channels-1})")
+                        messagebox.showerror("Error", f"Selected channel is not available")
+                        return
+                    
+                    logging.info(f"Playing chirp on device [{selected_index}] {device_name}, channel {selected_channel}")
+                    
+                    # Convert stereo to mono for the selected channel
+                    samples = np.frombuffer(audio_data, dtype=np.int16)
+                    samples = samples.reshape(-1, 2)
+                    mono_samples = samples[:, selected_channel % 2].astype(np.int16)  # Use left or right channel
+                    audio_data = mono_samples.tobytes()
                     
                     # Open stream
                     stream = p.open(
                         format=pyaudio.paInt16,
-                        channels=2,
+                        channels=1,  # Always use mono for single channel playback
                         rate=self.chirp_fs,
                         output=True,
-                        output_device_index=default_device_index,
+                        output_device_index=selected_index,
                         frames_per_buffer=2048
                     )
                     
@@ -404,13 +515,15 @@ class HapticEnhanceApp:
                     stream.close()
                     p.terminate()
                     
-                    logging.info("Successfully played chirp on default device")
+                    logging.info(f"Successfully played chirp on device [{selected_index}] {device_name}, channel {selected_channel}")
                     
                 except Exception as e:
-                    logging.error(f"Error playing on default device: {str(e)}")
+                    logging.error(f"Error playing on device [{selected_index}], channel {selected_channel}: {str(e)}")
+                    messagebox.showerror("Error", f"Failed to play audio: {str(e)}")
                 
         except Exception as e:
             logging.error(f"Error playing chirp: {e}")
+            messagebox.showerror("Error", f"Failed to play chirp: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
