@@ -1,3 +1,15 @@
+
+
+
+
+
+
+
+Paper: https://scholar.smu.edu/engineering_compsci_etds/49/
+
+
+
+
 # Model Training for the authentication 
 Leverage the inertial data to train a model for the authentication.
 By using the dualsense controller, we can collect the data and train a model to verify the user.
